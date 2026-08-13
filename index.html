@@ -71,7 +71,8 @@
 <div class="reader" id="reader">
   <div class="rhead">
     <div class="rtop"><button class="iconbtn" id="backBtn">‹</button><span style="flex:1"></span>
-      <button class="iconbtn" id="sizeBtn">A</button></div>
+      <button class="iconbtn" id="sizeDown" title="Smaller text">A−</button>
+      <button class="iconbtn" id="sizeUp" title="Larger text">A+</button></div>
     <div class="rboxes"><div class="metabox" id="boxLeft"></div><div class="metabox" id="boxRight"></div></div>
     <div id="capoLegend"></div>
     <h2 id="rTitle" class="rtitle"></h2>
@@ -218,7 +219,11 @@ el("themeBtn").onclick=()=>{const b=document.body;b.dataset.theme=b.dataset.them
 el("backBtn").onclick=()=>{stopScroll();el("reader").classList.remove("open")};
 el("tUp").onclick=()=>{steps++;draw()};el("tDown").onclick=()=>{steps--;draw()};el("resetKey").onclick=()=>{steps=0;draw()};
 el("playBtn").onclick=()=>autoT?stopScroll():startScroll();
-const sizes=[17,20,24,28];let si=1;el("sizeBtn").onclick=()=>{si=(si+1)%sizes.length;document.documentElement.style.setProperty("--lyric-size",sizes[si]+"px")};
+let fontSz=20;
+function applyFont(){fontSz=Math.max(12,Math.min(34,fontSz));document.documentElement.style.setProperty("--lyric-size",fontSz+"px");}
+el("sizeDown").onclick=()=>{fontSz-=2;applyFont();};
+el("sizeUp").onclick=()=>{fontSz+=2;applyFont();};
+applyFont();
 populateFilters();renderList();
 </script>
 </body>
