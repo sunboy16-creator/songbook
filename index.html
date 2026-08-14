@@ -58,6 +58,7 @@
 <div class="wrap">
   <header>
     <div class="brand"><h1>Sur&amp;Strings</h1><span class="n" id="count"></span><span style="flex:1"></span>
+      <button class="btn" id="wakeBtn" title="Keep screen awake">☀︎ Awake</button>
       <button class="btn" id="themeBtn">◑</button></div>
     <input class="search" id="search" placeholder="Search title, key, pattern…"/>
   </header>
@@ -214,6 +215,21 @@ function startScroll(){const sheet=el("sheet");el("playBtn").textContent="❚❚
 el("search").oninput=e=>{filter.q=e.target.value;renderList()};
 el("familySel").onchange=e=>{filter.family=e.target.value;renderList()};
 el("patternSel").onchange=e=>{filter.pattern=e.target.value;renderList()};
+/* ---------- keep screen awake (Wake Lock) ---------- */
+let wakeLock=null, wakeOn=false;
+async function enableWake(){
+  if(!("wakeLock" in navigator)){el("wakeBtn").textContent="✕ No wake";el("wakeBtn").title="Your browser doesn't support keep-awake (needs iOS 16.4+)";return false;}
+  try{wakeLock=await navigator.wakeLock.request("screen");wakeOn=true;
+    el("wakeBtn").textContent="☀︎ Awake ✓";el("wakeBtn").classList.add("primary");
+    wakeLock.addEventListener("release",()=>{wakeOn=false;el("wakeBtn").textContent="☀︎ Awake";el("wakeBtn").classList.remove("primary");});
+    return true;
+  }catch(e){el("wakeBtn").textContent="✕ Failed";return false;}
+}
+async function disableWake(){try{if(wakeLock){await wakeLock.release();wakeLock=null;}}catch(e){}
+  wakeOn=false;el("wakeBtn").textContent="☀︎ Awake";el("wakeBtn").classList.remove("primary");}
+el("wakeBtn").onclick=()=>{wakeOn?disableWake():enableWake();};
+// iOS drops the lock when you switch away/return; re-acquire on return if it was on
+document.addEventListener("visibilitychange",()=>{if(wakeOn && document.visibilityState==="visible") enableWake();});
 el("themeBtn").onclick=()=>{const b=document.body;b.dataset.theme=b.dataset.theme==="dark"?"day":"dark";
   document.querySelector('meta[name=theme-color]').content=getComputedStyle(b).getPropertyValue('--bg').trim();};
 el("backBtn").onclick=()=>{stopScroll();el("reader").classList.remove("open")};
