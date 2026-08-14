@@ -73,7 +73,8 @@
   <div class="rhead">
     <div class="rtop"><button class="iconbtn" id="backBtn">‹</button><span style="flex:1"></span>
       <button class="iconbtn" id="sizeDown" title="Smaller text">A−</button>
-      <button class="iconbtn" id="sizeUp" title="Larger text">A+</button></div>
+      <button class="iconbtn" id="sizeUp" title="Larger text">A+</button>
+      <button class="iconbtn" id="wakeBtnR" title="Keep screen awake">☀︎</button></div>
     <div class="rboxes"><div class="metabox" id="boxLeft"></div><div class="metabox" id="boxRight"></div></div>
     <div id="capoLegend"></div>
     <h2 id="rTitle" class="rtitle"></h2>
@@ -217,18 +218,19 @@ el("familySel").onchange=e=>{filter.family=e.target.value;renderList()};
 el("patternSel").onchange=e=>{filter.pattern=e.target.value;renderList()};
 /* ---------- keep screen awake (Wake Lock) ---------- */
 let wakeLock=null, wakeOn=false;
+const wakeBtns=()=>[document.getElementById("wakeBtn"),document.getElementById("wakeBtnR")].filter(Boolean);
+function paintWake(){wakeBtns().forEach(b=>{const r=b.id==="wakeBtnR";
+  b.textContent=wakeOn?(r?"☀︎✓":"☀︎ Awake ✓"):(r?"☀︎":"☀︎ Awake");
+  b.classList.toggle("primary",wakeOn);});}
 async function enableWake(){
-  if(!("wakeLock" in navigator)){el("wakeBtn").textContent="✕ No wake";el("wakeBtn").title="Your browser doesn't support keep-awake (needs iOS 16.4+)";return false;}
-  try{wakeLock=await navigator.wakeLock.request("screen");wakeOn=true;
-    el("wakeBtn").textContent="☀︎ Awake ✓";el("wakeBtn").classList.add("primary");
-    wakeLock.addEventListener("release",()=>{wakeOn=false;el("wakeBtn").textContent="☀︎ Awake";el("wakeBtn").classList.remove("primary");});
-    return true;
-  }catch(e){el("wakeBtn").textContent="✕ Failed";return false;}
+  if(!("wakeLock" in navigator)){wakeBtns().forEach(b=>{b.textContent="✕";b.title="Keep-awake needs iOS 16.4+";});return false;}
+  try{wakeLock=await navigator.wakeLock.request("screen");wakeOn=true;paintWake();
+    wakeLock.addEventListener("release",()=>{wakeOn=false;paintWake();});return true;
+  }catch(e){wakeBtns().forEach(b=>b.textContent="✕");return false;}
 }
-async function disableWake(){try{if(wakeLock){await wakeLock.release();wakeLock=null;}}catch(e){}
-  wakeOn=false;el("wakeBtn").textContent="☀︎ Awake";el("wakeBtn").classList.remove("primary");}
-el("wakeBtn").onclick=()=>{wakeOn?disableWake():enableWake();};
-// iOS drops the lock when you switch away/return; re-acquire on return if it was on
+async function disableWake(){try{if(wakeLock){await wakeLock.release();wakeLock=null;}}catch(e){}wakeOn=false;paintWake();}
+function toggleWake(){wakeOn?disableWake():enableWake();}
+wakeBtns().forEach(b=>b.onclick=toggleWake);
 document.addEventListener("visibilitychange",()=>{if(wakeOn && document.visibilityState==="visible") enableWake();});
 el("themeBtn").onclick=()=>{const b=document.body;b.dataset.theme=b.dataset.theme==="dark"?"day":"dark";
   document.querySelector('meta[name=theme-color]').content=getComputedStyle(b).getPropertyValue('--bg').trim();};
