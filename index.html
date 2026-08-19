@@ -49,6 +49,17 @@
   .unit .lyric{white-space:pre-wrap;overflow-wrap:break-word;font-size:var(--lyric-size)}
   .blank{height:calc(var(--lyric-size)*.7)}
   .transport{position:absolute;left:0;right:0;bottom:0;display:flex;gap:8px;align-items:center;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(0deg,var(--bg) 70%,transparent)}
+  /* ---- perform (full-screen chords) mode ---- */
+  .perfbar{display:none}
+  .reader.perform .rhead,.reader.perform .transport{display:none}
+  .reader.perform .sheet{padding:10px 14px 90px}
+  .reader.perform .perfbar{display:flex;position:absolute;left:0;right:0;bottom:0;z-index:5;
+    gap:10px;align-items:center;padding:8px 14px calc(8px + env(safe-area-inset-bottom));
+    background:linear-gradient(0deg,var(--bg) 75%,transparent)}
+  .perfbar .pbtn{background:var(--surface);border:1px solid var(--line);color:var(--text);
+    border-radius:10px;height:40px;min-width:44px;font-size:15px;cursor:pointer;flex:none}
+  .perfbar .play2{background:var(--accent);color:#fff;border:none;font-size:17px}
+  .perfbar #pSpeed{flex:1;accent-color:var(--accent)}
   .transport .play{width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:20px;cursor:pointer;flex:none}
   .speed{flex:1;display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px} .speed input{flex:1;accent-color:var(--accent)}
   .empty{color:var(--muted);text-align:center;padding:50px 20px}
@@ -74,7 +85,8 @@
     <div class="rtop"><button class="iconbtn" id="backBtn">‹</button><span style="flex:1"></span>
       <button class="iconbtn" id="sizeDown" title="Smaller text">A−</button>
       <button class="iconbtn" id="sizeUp" title="Larger text">A+</button>
-      <button class="iconbtn" id="wakeBtnR" title="Keep screen awake">☀︎</button></div>
+      <button class="iconbtn" id="wakeBtnR" title="Keep screen awake">☀︎</button>
+      <button class="iconbtn" id="performBtn" title="Full-screen chords">⛶</button></div>
     <div class="rboxes"><div class="metabox" id="boxLeft"></div><div class="metabox" id="boxRight"></div></div>
     <div id="capoLegend"></div>
     <h2 id="rTitle" class="rtitle"></h2>
@@ -86,6 +98,13 @@
   <div class="sheet" id="sheet"></div>
   <div class="transport"><button class="play" id="playBtn">▶</button>
     <div class="speed">🐢<input type="range" id="speed" min="1" max="100" value="35"/>🐇</div></div>
+  <div class="perfbar" id="perfbar">
+    <button class="pbtn" id="pSmaller" title="Smaller">A−</button>
+    <button class="pbtn" id="pBigger" title="Larger">A+</button>
+    <button class="pbtn play2" id="pPlay" title="Auto-scroll">▶</button>
+    <input type="range" id="pSpeed" min="1" max="100" value="35" title="Scroll speed"/>
+    <button class="pbtn" id="pExit" title="Exit full screen">✕</button>
+  </div>
 </div>
 
 <script>
@@ -207,8 +226,8 @@ function openReader(i){steps=0;stopScroll();curSong=parseSong(SONGS[i].cho);
   el("capoLegend").innerHTML=capoLegendHTML(curSong);
   draw();el("reader").classList.add("open");el("sheet").scrollTop=0;}
 function draw(){const k=renderSheet(el("sheet"),curSong,steps);el("rKey").textContent=k||"–";el("resetKey").style.display=steps?"inline-block":"none";}
-function stopScroll(){if(autoT){cancelAnimationFrame(autoT);autoT=null}el("playBtn").textContent="▶"}
-function startScroll(){const sheet=el("sheet");el("playBtn").textContent="❚❚";let acc=0,last=null;
+function stopScroll(){if(autoT){cancelAnimationFrame(autoT);autoT=null}el("playBtn").textContent="▶";var pp=document.getElementById("pPlay");if(pp)pp.textContent="▶";}
+function startScroll(){const sheet=el("sheet");el("playBtn").textContent="❚❚";var pp=document.getElementById("pPlay");if(pp)pp.textContent="❚❚";let acc=0,last=null;
   const step=(ts)=>{if(last==null)last=ts;const dt=(ts-last)/1000;last=ts;acc+=Number(el("speed").value)*0.9*dt;
     if(acc>=1){sheet.scrollTop+=Math.floor(acc);acc-=Math.floor(acc);}
     if(sheet.scrollTop+sheet.clientHeight>=sheet.scrollHeight-2){stopScroll();return}autoT=requestAnimationFrame(step);};
@@ -232,9 +251,22 @@ async function disableWake(){try{if(wakeLock){await wakeLock.release();wakeLock=
 function toggleWake(){wakeOn?disableWake():enableWake();}
 wakeBtns().forEach(b=>b.onclick=toggleWake);
 document.addEventListener("visibilitychange",()=>{if(wakeOn && document.visibilityState==="visible") enableWake();});
+
+/* ---------- perform (full-screen chords) mode ---------- */
+function enterPerform(){el("reader").classList.add("perform");if(!wakeOn)enableWake();syncPlay();}
+function exitPerform(){el("reader").classList.remove("perform");}
+el("performBtn").onclick=enterPerform;
+el("pExit").onclick=exitPerform;
+el("pSmaller").onclick=()=>{fontSz-=2;applyFont();};
+el("pBigger").onclick=()=>{fontSz+=2;applyFont();};
+// keep the two speed sliders mirrored
+el("pSpeed").oninput=()=>{el("speed").value=el("pSpeed").value;};
+el("speed").addEventListener("input",()=>{el("pSpeed").value=el("speed").value;});
+el("pPlay").onclick=()=>{autoT?stopScroll():startScroll();};
+function syncPlay(){const p=autoT?"❚❚":"▶";el("pPlay").textContent=p;el("playBtn").textContent=p;}
 el("themeBtn").onclick=()=>{const b=document.body;b.dataset.theme=b.dataset.theme==="dark"?"day":"dark";
   document.querySelector('meta[name=theme-color]').content=getComputedStyle(b).getPropertyValue('--bg').trim();};
-el("backBtn").onclick=()=>{stopScroll();el("reader").classList.remove("open")};
+el("backBtn").onclick=()=>{stopScroll();el("reader").classList.remove("open","perform")};
 el("tUp").onclick=()=>{steps++;draw()};el("tDown").onclick=()=>{steps--;draw()};el("resetKey").onclick=()=>{steps=0;draw()};
 el("playBtn").onclick=()=>autoT?stopScroll():startScroll();
 let fontSz=20;
